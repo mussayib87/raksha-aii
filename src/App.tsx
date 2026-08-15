@@ -1,9 +1,19 @@
 import { useState } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Header from "./components/layout/Header";
 import Sidebar from "./components/layout/Sidebar";
-import KPICards from "./components/dashboard/KPICards";
+import Dashboard from "./pages/Dashboard";
+import LiveMap from "./pages/LiveMap";
+import Incidents from "./pages/Incidents";
+import AIAnalytics from "./pages/AIAnalytics";
+import Responders from "./pages/Responders";
+import Resources from "./pages/Resources";
+import Alerts from "./pages/Alerts";
+import Reports from "./pages/Reports";
+import Messages from "./pages/Messages";
+import Settings from "./pages/Settings";
 
-function App() {
+function AppContent() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
@@ -18,33 +28,30 @@ function App() {
       />
 
       <main className="min-h-screen pt-[68px] lg:pl-[248px]">
-        <div className="space-y-4 p-4 lg:p-6">
-
-          {/* Page heading */}
-          <section>
-            <div className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-
-              <span className="text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-400">
-                Live Operations
-              </span>
-            </div>
-
-            <h1 className="mt-1 text-xl font-bold tracking-tight text-white">
-              Emergency Command Center
-            </h1>
-
-            <p className="mt-1 text-[11px] text-slate-500">
-              Real-time disaster response monitoring and coordination
-            </p>
-          </section>
-
-          {/* KPI overview */}
-          <KPICards />
-
-        </div>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/live-map" element={<LiveMap />} />
+          <Route path="/incidents" element={<Incidents />} />
+          <Route path="/ai-analytics" element={<AIAnalytics />} />
+          <Route path="/responders" element={<Responders />} />
+          <Route path="/resources" element={<Resources />} />
+          <Route path="/alerts" element={<Alerts />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/messages" element={<Messages />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </main>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
   );
 }
 

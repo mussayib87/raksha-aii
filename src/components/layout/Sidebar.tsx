@@ -1,13 +1,11 @@
 import {
   Activity,
   AlertTriangle,
-  BarChart3,
   Bell,
   Bot,
   FileText,
   LayoutDashboard,
   Map,
-  Menu,
   MessageSquare,
   Package,
   Settings,
@@ -16,29 +14,51 @@ import {
   X,
   Phone,
 } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 
 interface SidebarProps {
   mobileOpen: boolean;
   onClose: () => void;
 }
 
-const navigation = [
-  { label: "Dashboard", icon: LayoutDashboard, active: true },
-  { label: "Live Map", icon: Map },
-  { label: "Incidents", icon: AlertTriangle },
-  { label: "AI Analytics", icon: Bot },
-  { label: "Responders", icon: Users },
-  { label: "Resources", icon: Package },
-  { label: "Alerts", icon: Bell },
-  { label: "Reports", icon: FileText },
-  { label: "Messages", icon: MessageSquare },
-  { label: "Settings", icon: Settings },
+interface NavItem {
+  label: string;
+  icon: typeof Activity;
+  path: string;
+  isActive?: (currentPath: string) => boolean;
+}
+
+const navigation: NavItem[] = [
+  {
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    path: "/",
+    isActive: (path) => path === "/" || path === "/dashboard",
+  },
+  { label: "Live Map", icon: Map, path: "/live-map" },
+  { label: "Incidents", icon: AlertTriangle, path: "/incidents" },
+  { label: "AI Analytics", icon: Bot, path: "/ai-analytics" },
+  { label: "Responders", icon: Users, path: "/responders" },
+  { label: "Resources", icon: Package, path: "/resources" },
+  { label: "Alerts", icon: Bell, path: "/alerts" },
+  { label: "Reports", icon: FileText, path: "/reports" },
+  { label: "Messages", icon: MessageSquare, path: "/messages" },
+  { label: "Settings", icon: Settings, path: "/settings" },
 ];
 
 export default function Sidebar({
   mobileOpen,
   onClose,
 }: SidebarProps) {
+  const location = useLocation();
+
+  const isNavItemActive = (item: NavItem): boolean => {
+    if (item.isActive) {
+      return item.isActive(location.pathname);
+    }
+    return location.pathname === item.path;
+  };
+
   return (
     <>
       {mobileOpen && (
@@ -93,12 +113,15 @@ export default function Sidebar({
           <div className="space-y-1">
             {navigation.map((item) => {
               const Icon = item.icon;
+              const isActive = isNavItemActive(item);
 
               return (
-                <button
+                <Link
                   key={item.label}
+                  to={item.path}
+                  onClick={onClose}
                   className={`group flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-[12px] font-medium transition-all ${
-                    item.active
+                    isActive
                       ? "border border-red-500/15 bg-red-500/10 text-red-300"
                       : "border border-transparent text-slate-400 hover:bg-white/[0.035] hover:text-slate-100"
                   }`}
@@ -107,7 +130,7 @@ export default function Sidebar({
                     size={16}
                     strokeWidth={1.8}
                     className={
-                      item.active
+                      isActive
                         ? "text-red-400"
                         : "text-slate-500 group-hover:text-slate-300"
                     }
@@ -120,7 +143,7 @@ export default function Sidebar({
                       8
                     </span>
                   )}
-                </button>
+                </Link>
               );
             })}
           </div>
@@ -165,4 +188,5 @@ export default function Sidebar({
       </aside>
     </>
   );
-   }
+}
+
