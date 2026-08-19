@@ -563,47 +563,42 @@ function Recommendation({
   const isHigh = priority === "HIGH";
 
   return (
-    <div className="group rounded-lg border border-[var(--border)] bg-[var(--bg-primary)] p-3 transition-colors hover:border-cyan-500/20">
-      <div className="flex items-start gap-3">
-        <div
-          className={`flex h-7 w-7 items-center justify-center rounded-md border ${
-            isHigh
-              ? "border-red-500/20 bg-red-500/5"
-              : "border-orange-500/20 bg-orange-500/5"
-          }`}
-        >
-          <Zap />
-            size={12}
-            className={
-              isHigh
-                ? "text-red-400"
-                : "text-orange-400"
-            }
-          />
-        </div>
+    <div
+  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border ${
+    isHigh
+      ? "border-red-500/20 bg-red-500/5"
+      : "border-orange-500/20 bg-orange-500/5"
+  }`}
+>
+  <Zap
+    size={12}
+    className={
+      isHigh
+        ? "text-red-400"
+        : "text-orange-400"
+    }
+  />
+</div>
 
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] font-semibold text-white">
-              {title}
-            </span>
+<div className="min-w-0 flex-1">
+  <div className="flex items-center justify-between gap-2">
+    <span className="text-[10px] font-semibold text-white">
+      {title}
+    </span>
 
-            <span
-              className={`rounded-full px-1.5 py-0.5 text-[7px] font-bold ${
-                isHigh
-                  ? "bg-red-500/10 text-red-400"
-                  : "bg-orange-500/10 text-orange-400"
-              }`}
-            >
-              {priority}
-            </span>
-          </div>
+    <span
+      className={`rounded-full px-1.5 py-0.5 text-[7px] font-bold ${
+        isHigh
+          ? "bg-red-500/10 text-red-400"
+          : "bg-orange-500/10 text-orange-400"
+      }`}
+    >
+      {priority}
+    </span>
+  </div>
 
-          <p className="mt-1 text-[9px] leading-4 text-slate-500">
-            {reason}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-            }
+  <p className="mt-1 text-[9px] leading-4 text-slate-500">
+    {reason}
+  </p>
+</div>
+    
