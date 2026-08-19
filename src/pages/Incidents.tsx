@@ -8,7 +8,7 @@ import {
   Loader2,
   XCircle,
 } from "lucide-react";
-import { supabase } from "../lib/supabase";
+import { supabase, supabaseConfigError } from "../lib/supabase";
 
 type Incident = {
   id: string;
@@ -46,6 +46,12 @@ export default function Incidents() {
       }
 
       setError("");
+
+      if (!supabase) {
+        throw new Error(
+          supabaseConfigError ?? "The Supabase client is unavailable."
+        );
+      }
 
       const { data, error: supabaseError } = await supabase
         .from("incidents")
