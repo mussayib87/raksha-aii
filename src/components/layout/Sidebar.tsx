@@ -4,12 +4,14 @@ import {
   Bell,
   Bot,
   FileText,
+  FlaskConical,
   LayoutDashboard,
   Map,
   MessageSquare,
   Package,
   Settings,
   Shield,
+  Sparkles,
   Users,
   X,
   Phone,
@@ -30,20 +32,66 @@ interface NavItem {
 
 const navigation: NavItem[] = [
   {
-    label: "Dashboard",
+    label: "Command Center",
     icon: LayoutDashboard,
     path: "/",
     isActive: (path) => path === "/" || path === "/dashboard",
   },
-  { label: "Live Map", icon: Map, path: "/live-map" },
-  { label: "Incidents", icon: AlertTriangle, path: "/incidents" },
-  { label: "AI Analytics", icon: Bot, path: "/ai-analytics" },
-  { label: "Responders", icon: Users, path: "/responders" },
-  { label: "Resources", icon: Package, path: "/resources" },
-  { label: "Alerts", icon: Bell, path: "/alerts" },
-  { label: "Reports", icon: FileText, path: "/reports" },
-  { label: "Messages", icon: MessageSquare, path: "/messages" },
-  { label: "Settings", icon: Settings, path: "/settings" },
+  {
+    label: "Live Operations",
+    icon: Map,
+    path: "/live-map",
+  },
+  {
+    label: "Incidents",
+    icon: AlertTriangle,
+    path: "/incidents",
+  },
+  {
+    label: "AI Intelligence",
+    icon: Bot,
+    path: "/ai-analytics",
+  },
+  {
+    label: "AI Recommendations",
+    icon: Sparkles,
+    path: "/recommendations",
+  },
+  {
+    label: "Responders",
+    icon: Users,
+    path: "/responders",
+  },
+  {
+    label: "Resources",
+    icon: Package,
+    path: "/resources",
+  },
+  {
+    label: "Alerts",
+    icon: Bell,
+    path: "/alerts",
+  },
+  {
+    label: "Simulation",
+    icon: FlaskConical,
+    path: "/simulation",
+  },
+  {
+    label: "Reports",
+    icon: FileText,
+    path: "/reports",
+  },
+  {
+    label: "Messages",
+    icon: MessageSquare,
+    path: "/messages",
+  },
+  {
+    label: "Settings",
+    icon: Settings,
+    path: "/settings",
+  },
 ];
 
 export default function Sidebar({
@@ -56,11 +104,13 @@ export default function Sidebar({
     if (item.isActive) {
       return item.isActive(location.pathname);
     }
+
     return location.pathname === item.path;
   };
 
   return (
     <>
+      {/* Mobile overlay */}
       {mobileOpen && (
         <button
           aria-label="Close navigation"
@@ -71,7 +121,9 @@ export default function Sidebar({
 
       <aside
         className={`fixed inset-y-0 left-0 z-50 flex w-[248px] flex-col border-r border-[var(--border)] bg-[var(--bg-secondary)] transition-transform duration-300 ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          mobileOpen
+            ? "translate-x-0"
+            : "-translate-x-full lg:translate-x-0"
         }`}
       >
         {/* Brand */}
@@ -89,8 +141,9 @@ export default function Sidebar({
               <div className="text-sm font-bold tracking-[0.18em] text-white">
                 RAKSHA-AI
               </div>
+
               <div className="mt-0.5 text-[9px] font-medium tracking-[0.12em] text-slate-500">
-                DISASTER RESPONSE
+                DISASTER INTELLIGENCE
               </div>
             </div>
           </div>
@@ -107,7 +160,7 @@ export default function Sidebar({
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           <div className="mb-3 px-2 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-600">
-            Command Center
+            Operations
           </div>
 
           <div className="space-y-1">
@@ -138,9 +191,17 @@ export default function Sidebar({
 
                   <span>{item.label}</span>
 
+                  {/* Alerts counter */}
                   {item.label === "Alerts" && (
                     <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500/15 px-1.5 text-[9px] font-bold text-red-400">
                       8
+                    </span>
+                  )}
+
+                  {/* AI recommendation counter */}
+                  {item.label === "AI Recommendations" && (
+                    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-cyan-500/10 px-1.5 text-[9px] font-bold text-cyan-300">
+                      3
                     </span>
                   )}
                 </Link>
@@ -148,6 +209,33 @@ export default function Sidebar({
             })}
           </div>
         </nav>
+
+        {/* RAKSHA AI Status */}
+        <div className="border-t border-[var(--border)] px-3 pt-3">
+          <div className="rounded-lg border border-cyan-500/15 bg-cyan-500/[0.035] p-3">
+            <div className="flex items-center gap-2">
+              <Bot size={14} className="text-cyan-400" />
+
+              <span className="text-[9px] font-semibold uppercase tracking-[0.15em] text-cyan-300">
+                RAKSHA Intelligence
+              </span>
+
+              <span className="ml-auto h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+            </div>
+
+            <div className="mt-2 text-[10px] leading-4 text-slate-400">
+              AI monitoring and decision-support engine active.
+            </div>
+
+            <Link
+              to="/recommendations"
+              onClick={onClose}
+              className="mt-2 block w-full rounded-md border border-cyan-500/15 bg-cyan-500/5 py-1.5 text-center text-[9px] font-semibold text-cyan-300 transition-colors hover:bg-cyan-500/10"
+            >
+              View Recommendations
+            </Link>
+          </div>
+        </div>
 
         {/* Emergency Hotline */}
         <div className="border-t border-[var(--border)] p-3">
@@ -164,7 +252,10 @@ export default function Sidebar({
               112
             </div>
 
-            <button className="mt-2 w-full rounded-md border border-red-500/20 bg-red-500/10 py-1.5 text-[10px] font-semibold text-red-300 transition-colors hover:bg-red-500/20">
+            <button
+              type="button"
+              className="mt-2 w-full rounded-md border border-red-500/20 bg-red-500/10 py-1.5 text-[10px] font-semibold text-red-300 transition-colors hover:bg-red-500/20"
+            >
               Emergency Contact
             </button>
           </div>
@@ -177,6 +268,7 @@ export default function Sidebar({
               <div className="text-[9px] font-semibold uppercase tracking-wider text-slate-500">
                 System Status
               </div>
+
               <div className="text-[10px] text-emerald-400">
                 All Systems Operational
               </div>
@@ -188,5 +280,4 @@ export default function Sidebar({
       </aside>
     </>
   );
-}
-
+      }
