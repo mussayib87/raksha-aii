@@ -10,10 +10,45 @@ import {
   Users,
   Zap,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import KPICards from "../components/dashboard/KPICards";
+import {
+  fetchIncidents,
+  getIncidentMapPosition,
+  type Incident,
+} from "../lib/incidents";
 
 export default function Dashboard() {
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [mapError, setMapError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    void fetchIncidents()
+      .then((data) => {
+        if (mounted) setIncidents(data);
+      })
+      .catch((error: unknown) => {
+        if (mounted) {
+          setMapError(
+            error instanceof Error
+              ? error.message
+              : "Unable to load incident locations."
+          );
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const locatedIncidents = incidents.filter(
+    (incident) => incident.latitude !== null && incident.longitude !== null
+  );
+
   return (
     <div className="space-y-5 p-4 lg:p-6">
       {/* =========================================================
@@ -130,27 +165,41 @@ export default function Dashboard() {
 
               <div className="absolute left-[25%] top-[32%] h-[135px] w-[135px] rounded-full border border-red-500/20" />
 
-              {/* Incident marker 1 */}
-              <div className="absolute left-[32%] top-[40%]">
-                <div className="absolute -inset-3 animate-ping rounded-full bg-red-500/10" />
+              {locatedIncidents.map((incident, index) => {
+                const position = getIncidentMapPosition(incident, locatedIncidents);
+                const isCritical = incident.severity.trim().toLowerCase() === "critical";
 
-                <div className="relative flex h-7 w-7 items-center justify-center rounded-full border border-red-400/40 bg-red-500/15">
-                  <AlertTriangle
-                    size={13}
-                    className="text-red-400"
-                  />
-                </div>
-              </div>
+                return (
+                  <div
+                    key={incident.id}
+                    className="absolute"
+                    style={position}
+                    title={`${incident.title} (${incident.latitude}, ${incident.longitude})`}
+                  >
+                    {index === 0 && (
+                      <div className="absolute -inset-3 animate-ping rounded-full bg-red-500/10" />
+                    )}
+                    <div
+                      className={`relative flex h-7 w-7 items-center justify-center rounded-full border ${
+                        isCritical
+                          ? "border-red-400/40 bg-red-500/15"
+                          : "border-orange-400/40 bg-orange-500/10"
+                      }`}
+                    >
+                      <AlertTriangle
+                        size={13}
+                        className={isCritical ? "text-red-400" : "text-orange-400"}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
 
-              {/* Incident marker 2 */}
-              <div className="absolute right-[27%] top-[48%]">
-                <div className="relative flex h-6 w-6 items-center justify-center rounded-full border border-orange-400/40 bg-orange-500/10">
-                  <AlertTriangle
-                    size={12}
-                    className="text-orange-400"
-                  />
+              {mapError && (
+                <div className="absolute left-4 top-4 max-w-[220px] rounded-md border border-red-500/20 bg-black/60 px-3 py-2 text-[9px] text-red-300">
+                  {mapError}
                 </div>
-              </div>
+              )}
 
               {/* Responder marker */}
               <div className="absolute left-[52%] bottom-[25%]">

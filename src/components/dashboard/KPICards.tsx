@@ -11,6 +11,11 @@ import {
   TrendingUp,
   Zap,
 } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  fetchIncidents,
+  isActiveIncident,
+} from "../../lib/incidents";
 
 interface KPI {
   title: string;
@@ -94,9 +99,57 @@ const kpis: KPI[] = [
 ];
 
 export default function KPICards() {
+  const [activeIncidents, setActiveIncidents] = useState<number | null>(null);
+  const [criticalThreats, setCriticalThreats] = useState<number | null>(null);
+  const [dataError, setDataError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    void fetchIncidents()
+      .then((incidents) => {
+        if (!mounted) return;
+
+        const active = incidents.filter(isActiveIncident);
+        setActiveIncidents(active.length);
+        setCriticalThreats(
+          active.filter(
+            (incident) => incident.severity.trim().toLowerCase() === "critical"
+          ).length
+        );
+      })
+      .catch((error: unknown) => {
+        if (!mounted) return;
+        setDataError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load incident metrics."
+        );
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const displayValue = (value: number | null): string =>
+    value === null ? "—" : String(value);
+
+  const displayStatus = dataError ? "Data unavailable" : "Live from Supabase";
+
   return (
     <section className="grid grid-cols-2 gap-3 xl:grid-cols-6">
       {kpis.map((kpi) => {
+        const value =
+          kpi.title === "Active Incidents"
+            ? displayValue(activeIncidents)
+            : kpi.title === "Critical Threats"
+              ? displayValue(criticalThreats)
+              : kpi.value;
+        const status =
+          kpi.title === "Active Incidents" || kpi.title === "Critical Threats"
+            ? displayStatus
+            : kpi.status;
         const Icon = kpi.icon;
 
         const TrendIcon =
@@ -134,7 +187,7 @@ export default function KPICards() {
                 </div>
 
                 <div className="mt-2 text-xl font-bold tracking-tight text-white">
-                  {kpi.value}
+                  {value}
                 </div>
               </div>
 
@@ -194,7 +247,7 @@ export default function KPICards() {
               <span
                 className={`text-[9px] font-medium ${trendClass}`}
               >
-                {kpi.status}
+                {status}
               </span>
             </div>
 

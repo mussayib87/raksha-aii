@@ -8,22 +8,10 @@ import {
   Loader2,
   XCircle,
 } from "lucide-react";
-import { supabase, supabaseConfigError } from "../lib/supabase";
-
-type Incident = {
-  id: string;
-  title?: string | null;
-  name?: string | null;
-  type?: string | null;
-  incident_type?: string | null;
-  description?: string | null;
-  severity?: string | null;
-  status?: string | null;
-  location?: unknown;
-  created_at?: string | null;
-  reported_at?: string | null;
-  createdAt?: string | null;
-};
+import {
+  fetchIncidents as loadIncidents,
+  type Incident,
+} from "../lib/incidents";
 
 export default function Incidents() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -47,22 +35,7 @@ export default function Incidents() {
 
       setError("");
 
-      if (!supabase) {
-        throw new Error(
-          supabaseConfigError ?? "The Supabase client is unavailable."
-        );
-      }
-
-      const { data, error: supabaseError } = await supabase
-        .from("incidents")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (supabaseError) {
-        throw supabaseError;
-      }
-
-      setIncidents((data as Incident[]) || []);
+      setIncidents(await loadIncidents());
     } catch (err: unknown) {
       console.error("Error loading incidents:", err);
 
@@ -107,42 +80,10 @@ export default function Incidents() {
   // --------------------------------------------------
   // Format location
   // --------------------------------------------------
-  const formatLocation = (location: unknown): string => {
+  const formatLocation = (location: string | null): string => {
     if (!location) return "Unknown";
 
-    if (typeof location === "string") {
-      return location;
-    }
-
-    if (typeof location === "object") {
-      const value = location as Record<string, unknown>;
-
-      if (typeof value.address === "string") {
-        return value.address;
-      }
-
-      if (typeof value.name === "string") {
-        return value.name;
-      }
-
-      if (
-        typeof value.latitude === "number" &&
-        typeof value.longitude === "number"
-      ) {
-        return `${value.latitude.toFixed(4)}, ${value.longitude.toFixed(4)}`;
-      }
-
-      if (
-        typeof value.lat === "number" &&
-        typeof value.lng === "number"
-      ) {
-        return `${value.lat.toFixed(4)}, ${value.lng.toFixed(4)}`;
-      }
-
-      return "Location available";
-    }
-
-    return String(location);
+    return location;
   };
 
   // --------------------------------------------------
@@ -446,9 +387,7 @@ export default function Incidents() {
                         <td className="px-4 py-4">
                           <div className="max-w-[230px]">
                             <p className="truncate text-xs font-semibold text-slate-200">
-                              {incident.title ||
-                                incident.name ||
-                                "Untitled Incident"}
+                              {incident.title || "Untitled Incident"}
                             </p>
 
                             <p className="mt-1 truncate font-mono text-[9px] text-slate-600">
@@ -459,9 +398,7 @@ export default function Incidents() {
 
                         <td className="px-4 py-4">
                           <span className="text-xs capitalize text-slate-400">
-                            {incident.type ||
-                              incident.incident_type ||
-                              "Unknown"}
+                            {incident.type || "Unknown"}
                           </span>
                         </td>
 
@@ -507,9 +444,7 @@ export default function Incidents() {
 
                             <span className="text-[10px] text-slate-500">
                               {formatDate(
-                                incident.created_at ||
-                                  incident.reported_at ||
-                                  incident.createdAt
+                                incident.created_at
                               )}
                             </span>
                           </div>
