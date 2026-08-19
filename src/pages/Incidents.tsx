@@ -1,87 +1,211 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
+import {
+  AlertTriangle,
+  Search,
+  RefreshCw,
+  MapPin,
+  Clock3,
+  Loader2,
+  XCircle,
+} from "lucide-react";
 import { supabase } from "../lib/supabase";
 
-type Incident = {
-  id: string;
-  title: string;
-  description: string | null;
-  type: string;
-  severity: string;
-  status: string;
-  location: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  assigned_responder: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
 export default function Incidents() {
-  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
 
   const [search, setSearch] = useState("");
   const [severity, setSeverity] = useState("");
 
-  const loadIncidents = async () => {
-    setLoading(true);
-    setError(null);
+  // --------------------------------------------------
+  // Fetch incidents from Supabase
+  // --------------------------------------------------
+  const fetchIncidents = async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
 
-    const { data, error } = await supabase
-      .from("incidents")
-      .select(
-        `
-        id,
-        title,
-        description,
-        type,
-        severity,
-        status,
-        location,
-        latitude,
-        longitude,
-        assigned_responder,
-        created_at,
-        updated_at
-        `
-      )
-      .order("created_at", { ascending: false });
+      setError("");
 
-    if (error) {
-      console.error("Failed to load incidents:", error);
-      setError(error.message);
-      setIncidents([]);
-    } else {
-      setIncidents(data ?? []);
+      const { data, error: supabaseError } = await supabase
+        .from("incidents")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (supabaseError) {
+        throw supabaseError;
+      }
+
+      setIncidents(data || []);
+    } catch (err) {
+      console.error("Error loading incidents:", err);
+
+      setError(
+        err?.message ||
+          "Unable to load incidents. Please check your Supabase connection."
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-
-    setLoading(false);
   };
 
+  // Initial load
   useEffect(() => {
-    loadIncidents();
+    fetchIncidents();
   }, []);
 
+  // --------------------------------------------------
+  // Format date
+  // --------------------------------------------------
+  const formatDate = (date) => {
+    if (!date) return "—";
+
+    const parsed = new Date(date);
+
+    if (Number.isNaN(parsed.getTime())) {
+      return "—";
+    }
+
+    return parsed.toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // --------------------------------------------------
+  // Format location
+  // --------------------------------------------------
+  const formatLocation = (location) => {
+    if (!location) return "Unknown";
+
+    if (typeof location === "string") {
+      return location;
+    }
+
+    if (typeof location === "object") {
+      if (location.address) return location.address;
+      if (location.name) return location.name;
+
+      if (
+        typeof location.latitude === "number" &&
+        typeof location.longitude === "number"
+      ) {
+        return `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(
+          4
+        )}`;
+      }
+
+      if (
+        typeof location.lat === "number" &&
+        typeof location.lng === "number"
+      ) {
+        return `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`;
+      }
+
+      return "Location available";
+    }
+
+    return String(location);
+  };
+
+  // --------------------------------------------------
+  // Normalize values
+  // --------------------------------------------------
+  const normalize = (value) =>
+    String(value || "")
+      .trim()
+      .toLowerCase();
+
+  // --------------------------------------------------
+  // Filter incidents
+  // --------------------------------------------------
   const filteredIncidents = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = normalize(search);
 
     return incidents.filter((incident) => {
       const matchesSearch =
         !query ||
-        incident.title.toLowerCase().includes(query) ||
-        incident.type.toLowerCase().includes(query) ||
-        (incident.location ?? "").toLowerCase().includes(query) ||
-        incident.status.toLowerCase().includes(query);
+        normalize(incident.id).includes(query) ||
+        normalize(incident.title).includes(query) ||
+        normalize(incident.type).includes(query) ||
+        normalize(incident.description).includes(query) ||
+        normalize(formatLocation(incident.location)).includes(query);
 
       const matchesSeverity =
-        !severity || incident.severity.toLowerCase() === severity;
+        !severity || normalize(incident.severity) === normalize(severity);
 
       return matchesSearch && matchesSeverity;
     });
   }, [incidents, search, severity]);
 
+  // --------------------------------------------------
+  // Severity styles
+  // --------------------------------------------------
+  const getSeverityStyle = (value) => {
+    switch (normalize(value)) {
+      case "critical":
+        return "border-red-500/30 bg-red-500/10 text-red-400";
+
+      case "high":
+        return "border-orange-500/30 bg-orange-500/10 text-orange-400";
+
+      case "medium":
+        return "border-yellow-500/30 bg-yellow-500/10 text-yellow-400";
+
+      case "low":
+        return "border-emerald-500/30 bg-emerald-500/10 text-emerald-400";
+
+      default:
+        return "border-slate-500/30 bg-slate-500/10 text-slate-400";
+    }
+  };
+
+  // --------------------------------------------------
+  // Status styles
+  // --------------------------------------------------
+  const getStatusStyle = (value) => {
+    switch (normalize(value)) {
+      case "active":
+      case "open":
+      case "pending":
+        return "border-red-500/30 bg-red-500/10 text-red-400";
+
+      case "assigned":
+      case "responding":
+      case "in progress":
+      case "in_progress":
+        return "border-blue-500/30 bg-blue-500/10 text-blue-400";
+
+      case "resolved":
+      case "closed":
+      case "completed":
+        return "border-emerald-500/30 bg-emerald-500/10 text-emerald-400";
+
+      default:
+        return "border-slate-500/30 bg-slate-500/10 text-slate-400";
+    }
+  };
+
+  // --------------------------------------------------
+  // Clear filters
+  // --------------------------------------------------
+  const clearFilters = () => {
+    setSearch("");
+    setSeverity("");
+  };
+
+  // --------------------------------------------------
+  // Render
+  // --------------------------------------------------
   return (
     <div className="space-y-4 p-4 lg:p-6">
       {/* Page heading */}
@@ -94,9 +218,9 @@ export default function Incidents() {
           </span>
         </div>
 
-        <div className="flex items-end justify-between gap-3">
+        <div className="mt-1 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
-            <h1 className="mt-1 text-xl font-bold tracking-tight text-white">
+            <h1 className="text-xl font-bold tracking-tight text-white">
               Incidents
             </h1>
 
@@ -105,32 +229,44 @@ export default function Incidents() {
             </p>
           </div>
 
+          {/* Refresh */}
           <button
-            type="button"
-            onClick={loadIncidents}
-            disabled={loading}
-            className="inline-flex h-9 items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-3 text-[11px] font-medium text-slate-300 transition hover:border-red-500/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => fetchIncidents(true)}
+            disabled={refreshing}
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-3 text-[11px] font-medium text-slate-300 transition hover:border-red-500/30 hover:bg-red-500/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
-            Refresh
+            {refreshing ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <RefreshCw size={14} />
+            )}
+
+            {refreshing ? "Refreshing..." : "Refresh"}
           </button>
         </div>
       </section>
 
       {/* Filters */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-2">
-        <input
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search incidents..."
-          className="flex-1 h-9 rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-3 text-[11px] text-slate-200 placeholder:text-slate-600 focus:border-red-500/40 focus:outline-none"
-        />
+      <div className="flex flex-col gap-3 md:flex-row md:items-center">
+        <div className="relative flex-1">
+          <Search
+            size={14}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-600"
+          />
+
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search incidents..."
+            className="h-9 w-full rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] pl-9 pr-3 text-[11px] text-slate-200 placeholder:text-slate-600 focus:border-red-500/40 focus:outline-none"
+          />
+        </div>
 
         <select
           value={severity}
-          onChange={(event) => setSeverity(event.target.value)}
-          className="h-9 rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-3 text-[11px] text-slate-200 focus:border-red-500/40 focus:outline-none cursor-pointer"
+          onChange={(e) => setSeverity(e.target.value)}
+          className="h-9 rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-3 text-[11px] text-slate-200 focus:border-red-500/40 focus:outline-none"
         >
           <option value="">All Severities</option>
           <option value="critical">Critical</option>
@@ -138,11 +274,21 @@ export default function Incidents() {
           <option value="medium">Medium</option>
           <option value="low">Low</option>
         </select>
+
+        {(search || severity) && (
+          <button
+            onClick={clearFilters}
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-[var(--border)] px-3 text-[11px] text-slate-400 transition hover:border-red-500/30 hover:text-red-400"
+          >
+            <XCircle size={13} />
+            Clear
+          </button>
+        )}
       </div>
 
       {/* Error */}
       {error && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4">
+        <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4">
           <div className="flex items-start gap-3">
             <AlertTriangle
               size={18}
@@ -150,130 +296,218 @@ export default function Incidents() {
             />
 
             <div>
-              <p className="text-sm font-semibold text-red-300">
-                Unable to load incidents
+              <p className="text-sm font-medium text-red-400">
+                Failed to load incidents
               </p>
 
-              <p className="mt-1 text-xs text-red-200/70">{error}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                {error}
+              </p>
+
+              <button
+                onClick={() => fetchIncidents()}
+                className="mt-3 rounded-md border border-red-500/20 px-3 py-1.5 text-[11px] font-medium text-red-400 transition hover:bg-red-500/10"
+              >
+                Try again
+              </button>
             </div>
           </div>
         </div>
       )}
 
       {/* Loading */}
-      {loading && (
+      {loading ? (
         <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-panel)] p-12 text-center">
-          <Loader2
-            size={28}
-            className="mx-auto animate-spin text-red-400"
-          />
+          <div className="flex justify-center">
+            <Loader2
+              size={28}
+              className="animate-spin text-red-400"
+            />
+          </div>
 
-          <p className="mt-3 text-xs text-slate-400">
-            Loading emergency incidents...
+          <p className="mt-4 text-sm font-medium text-slate-300">
+            Loading incidents...
+          </p>
+
+          <p className="mt-1 text-xs text-slate-600">
+            Connecting to emergency data source
           </p>
         </div>
-      )}
+      ) : (
+        <>
+          {/* Result count */}
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-slate-600">
+              {filteredIncidents.length}{" "}
+              {filteredIncidents.length === 1 ? "Incident" : "Incidents"}
+            </p>
 
-      {/* Empty state */}
-      {!loading && !error && filteredIncidents.length === 0 && (
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-panel)] p-12 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-red-500/30 bg-red-500/10">
-              <AlertTriangle
-                size={32}
-                className="text-red-400"
-                strokeWidth={1.5}
-              />
+            {(search || severity) && (
+              <p className="text-[10px] text-slate-600">
+                Filtered from {incidents.length}
+              </p>
+            )}
+          </div>
+
+          {/* Empty state */}
+          {filteredIncidents.length === 0 ? (
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-panel)] p-12 text-center">
+              <div className="mb-4 flex justify-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-red-500/30 bg-red-500/10">
+                  <AlertTriangle
+                    size={32}
+                    className="text-red-400"
+                    strokeWidth={1.5}
+                  />
+                </div>
+              </div>
+
+              <h2 className="mb-2 text-lg font-semibold text-white">
+                {incidents.length === 0
+                  ? "No Incidents"
+                  : "No Matching Incidents"}
+              </h2>
+
+              <p className="mb-4 text-sm text-slate-400">
+                {incidents.length === 0
+                  ? "No emergency incidents have been reported yet."
+                  : "Try changing your search or severity filter."}
+              </p>
+
+              {(search || severity) && (
+                <button
+                  onClick={clearFilters}
+                  className="rounded-md border border-red-500/20 bg-red-500/5 px-4 py-2 text-xs font-medium text-red-400 transition hover:bg-red-500/10"
+                >
+                  Clear Filters
+                </button>
+              )}
             </div>
-          </div>
+          ) : (
+            /* Desktop/table */
+            <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-panel)]">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[850px] text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--border)] bg-[var(--bg-secondary)]">
+                      <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
+                        Incident
+                      </th>
 
-          <h2 className="text-lg font-semibold text-white mb-2">
-            No Incidents
-          </h2>
+                      <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
+                        Type
+                      </th>
 
-          <p className="text-slate-400 text-sm mb-4">
-            {incidents.length === 0
-              ? "No emergency incidents have been reported yet."
-              : "No incidents match your current filters."}
-          </p>
+                      <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
+                        Severity
+                      </th>
 
-          <p className="text-slate-500 text-xs">
-            Reported incidents will appear here automatically.
-          </p>
-        </div>
-      )}
+                      <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
+                        Location
+                      </th>
 
-      {/* Incident table */}
-      {!loading && filteredIncidents.length > 0 && (
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-panel)] overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--border)] bg-[var(--bg-secondary)]">
-                  <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
-                    Incident ID
-                  </th>
+                      <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
+                        Status
+                      </th>
 
-                  <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
-                    Type
-                  </th>
+                      <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
+                        Reported
+                      </th>
+                    </tr>
+                  </thead>
 
-                  <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
-                    Severity
-                  </th>
+                  <tbody>
+                    {filteredIncidents.map((incident) => (
+                      <tr
+                        key={incident.id}
+                        className="border-b border-[var(--border)] transition hover:bg-white/[0.02]"
+                      >
+                        {/* Incident */}
+                        <td className="px-4 py-4">
+                          <div className="max-w-[230px]">
+                            <p className="truncate text-xs font-semibold text-slate-200">
+                              {incident.title ||
+                                incident.name ||
+                                "Untitled Incident"}
+                            </p>
 
-                  <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
-                    Location
-                  </th>
+                            <p className="mt-1 truncate font-mono text-[9px] text-slate-600">
+                              {incident.id}
+                            </p>
+                          </div>
+                        </td>
 
-                  <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
-                    Status
-                  </th>
-                </tr>
-              </thead>
+                        {/* Type */}
+                        <td className="px-4 py-4">
+                          <span className="text-xs capitalize text-slate-400">
+                            {incident.type ||
+                              incident.incident_type ||
+                              "Unknown"}
+                          </span>
+                        </td>
 
-              <tbody>
-                {filteredIncidents.map((incident) => (
-                  <tr
-                    key={incident.id}
-                    className="border-b border-[var(--border)] last:border-b-0 hover:bg-white/[0.02]"
-                  >
-                    <td className="px-4 py-3">
-                      <div className="max-w-[180px] truncate text-xs font-medium text-slate-200">
-                        {incident.id}
-                      </div>
+                        {/* Severity */}
+                        <td className="px-4 py-4">
+                          <span
+                            className={`inline-flex rounded-full border px-2 py-1 text-[9px] font-semibold uppercase tracking-wide ${getSeverityStyle(
+                              incident.severity
+                            )}`}
+                          >
+                            {incident.severity || "Unknown"}
+                          </span>
+                        </td>
 
-                      <div className="mt-0.5 max-w-[180px] truncate text-[10px] text-slate-500">
-                        {incident.title}
-                      </div>
-                    </td>
+                        {/* Location */}
+                        <td className="px-4 py-4">
+                          <div className="flex max-w-[220px] items-center gap-1.5">
+                            <MapPin
+                              size={12}
+                              className="shrink-0 text-slate-600"
+                            />
 
-                    <td className="px-4 py-3 text-xs capitalize text-slate-300">
-                      {incident.type}
-                    </td>
+                            <span className="truncate text-xs text-slate-400">
+                              {formatLocation(incident.location)}
+                            </span>
+                          </div>
+                        </td>
 
-                    <td className="px-4 py-3">
-                      <span className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-300">
-                        {incident.severity}
-                      </span>
-                    </td>
+                        {/* Status */}
+                        <td className="px-4 py-4">
+                          <span
+                            className={`inline-flex rounded-full border px-2 py-1 text-[9px] font-semibold uppercase tracking-wide ${getStatusStyle(
+                              incident.status
+                            )}`}
+                          >
+                            {incident.status || "Unknown"}
+                          </span>
+                        </td>
 
-                    <td className="px-4 py-3 text-xs text-slate-400">
-                      {incident.location || "Location unavailable"}
-                    </td>
+                        {/* Created */}
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-1.5 whitespace-nowrap">
+                            <Clock3
+                              size={12}
+                              className="text-slate-600"
+                            />
 
-                    <td className="px-4 py-3">
-                      <span className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-300">
-                        {incident.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                            <span className="text-[10px] text-slate-500">
+                              {formatDate(
+                                incident.created_at ||
+                                  incident.reported_at ||
+                                  incident.createdAt
+                              )}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
-  }
+}
