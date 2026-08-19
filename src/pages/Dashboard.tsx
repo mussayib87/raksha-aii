@@ -8,7 +8,7 @@ import {
   ShieldAlert,
   Sparkles,
   Users,
-  zap,
+  Zap,
 } from "lucide-react";
 
 import KPICards from "../components/dashboard/KPICards";
