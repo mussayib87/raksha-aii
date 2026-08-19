@@ -10,19 +10,34 @@ import {
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
+type Incident = {
+  id: string;
+  title?: string | null;
+  name?: string | null;
+  type?: string | null;
+  incident_type?: string | null;
+  description?: string | null;
+  severity?: string | null;
+  status?: string | null;
+  location?: unknown;
+  created_at?: string | null;
+  reported_at?: string | null;
+  createdAt?: string | null;
+};
+
 export default function Incidents() {
-  const [incidents, setIncidents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState("");
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
 
-  const [search, setSearch] = useState("");
-  const [severity, setSeverity] = useState("");
+  const [search, setSearch] = useState<string>("");
+  const [severity, setSeverity] = useState<string>("");
 
   // --------------------------------------------------
-  // Fetch incidents from Supabase
+  // Fetch incidents
   // --------------------------------------------------
-  const fetchIncidents = async (isRefresh = false) => {
+  const fetchIncidents = async (isRefresh = false): Promise<void> => {
     try {
       if (isRefresh) {
         setRefreshing(true);
@@ -41,29 +56,31 @@ export default function Incidents() {
         throw supabaseError;
       }
 
-      setIncidents(data || []);
-    } catch (err) {
+      setIncidents((data as Incident[]) || []);
+    } catch (err: unknown) {
       console.error("Error loading incidents:", err);
 
-      setError(
-        err?.message ||
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError(
           "Unable to load incidents. Please check your Supabase connection."
-      );
+        );
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  // Initial load
   useEffect(() => {
-    fetchIncidents();
+    void fetchIncidents();
   }, []);
 
   // --------------------------------------------------
   // Format date
   // --------------------------------------------------
-  const formatDate = (date) => {
+  const formatDate = (date: string | null | undefined): string => {
     if (!date) return "—";
 
     const parsed = new Date(date);
@@ -84,7 +101,7 @@ export default function Incidents() {
   // --------------------------------------------------
   // Format location
   // --------------------------------------------------
-  const formatLocation = (location) => {
+  const formatLocation = (location: unknown): string => {
     if (!location) return "Unknown";
 
     if (typeof location === "string") {
@@ -92,23 +109,28 @@ export default function Incidents() {
     }
 
     if (typeof location === "object") {
-      if (location.address) return location.address;
-      if (location.name) return location.name;
+      const value = location as Record<string, unknown>;
 
-      if (
-        typeof location.latitude === "number" &&
-        typeof location.longitude === "number"
-      ) {
-        return `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(
-          4
-        )}`;
+      if (typeof value.address === "string") {
+        return value.address;
+      }
+
+      if (typeof value.name === "string") {
+        return value.name;
       }
 
       if (
-        typeof location.lat === "number" &&
-        typeof location.lng === "number"
+        typeof value.latitude === "number" &&
+        typeof value.longitude === "number"
       ) {
-        return `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`;
+        return `${value.latitude.toFixed(4)}, ${value.longitude.toFixed(4)}`;
+      }
+
+      if (
+        typeof value.lat === "number" &&
+        typeof value.lng === "number"
+      ) {
+        return `${value.lat.toFixed(4)}, ${value.lng.toFixed(4)}`;
       }
 
       return "Location available";
@@ -120,8 +142,8 @@ export default function Incidents() {
   // --------------------------------------------------
   // Normalize values
   // --------------------------------------------------
-  const normalize = (value) =>
-    String(value || "")
+  const normalize = (value: unknown): string =>
+    String(value ?? "")
       .trim()
       .toLowerCase();
 
@@ -131,7 +153,7 @@ export default function Incidents() {
   const filteredIncidents = useMemo(() => {
     const query = normalize(search);
 
-    return incidents.filter((incident) => {
+    return incidents.filter((incident: Incident) => {
       const matchesSearch =
         !query ||
         normalize(incident.id).includes(query) ||
@@ -141,7 +163,8 @@ export default function Incidents() {
         normalize(formatLocation(incident.location)).includes(query);
 
       const matchesSeverity =
-        !severity || normalize(incident.severity) === normalize(severity);
+        !severity ||
+        normalize(incident.severity) === normalize(severity);
 
       return matchesSearch && matchesSeverity;
     });
@@ -150,7 +173,7 @@ export default function Incidents() {
   // --------------------------------------------------
   // Severity styles
   // --------------------------------------------------
-  const getSeverityStyle = (value) => {
+  const getSeverityStyle = (value: unknown): string => {
     switch (normalize(value)) {
       case "critical":
         return "border-red-500/30 bg-red-500/10 text-red-400";
@@ -172,7 +195,7 @@ export default function Incidents() {
   // --------------------------------------------------
   // Status styles
   // --------------------------------------------------
-  const getStatusStyle = (value) => {
+  const getStatusStyle = (value: unknown): string => {
     switch (normalize(value)) {
       case "active":
       case "open":
@@ -198,14 +221,11 @@ export default function Incidents() {
   // --------------------------------------------------
   // Clear filters
   // --------------------------------------------------
-  const clearFilters = () => {
+  const clearFilters = (): void => {
     setSearch("");
     setSeverity("");
   };
 
-  // --------------------------------------------------
-  // Render
-  // --------------------------------------------------
   return (
     <div className="space-y-4 p-4 lg:p-6">
       {/* Page heading */}
@@ -229,9 +249,8 @@ export default function Incidents() {
             </p>
           </div>
 
-          {/* Refresh */}
           <button
-            onClick={() => fetchIncidents(true)}
+            onClick={() => void fetchIncidents(true)}
             disabled={refreshing}
             className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-3 text-[11px] font-medium text-slate-300 transition hover:border-red-500/30 hover:bg-red-500/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -305,7 +324,7 @@ export default function Incidents() {
               </p>
 
               <button
-                onClick={() => fetchIncidents()}
+                onClick={() => void fetchIncidents()}
                 className="mt-3 rounded-md border border-red-500/20 px-3 py-1.5 text-[11px] font-medium text-red-400 transition hover:bg-red-500/10"
               >
                 Try again
@@ -319,10 +338,7 @@ export default function Incidents() {
       {loading ? (
         <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-panel)] p-12 text-center">
           <div className="flex justify-center">
-            <Loader2
-              size={28}
-              className="animate-spin text-red-400"
-            />
+            <Loader2 size={28} className="animate-spin text-red-400" />
           </div>
 
           <p className="mt-4 text-sm font-medium text-slate-300">
@@ -384,7 +400,6 @@ export default function Incidents() {
               )}
             </div>
           ) : (
-            /* Desktop/table */
             <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-panel)]">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[850px] text-sm">
@@ -417,12 +432,11 @@ export default function Incidents() {
                   </thead>
 
                   <tbody>
-                    {filteredIncidents.map((incident) => (
+                    {filteredIncidents.map((incident: Incident) => (
                       <tr
                         key={incident.id}
                         className="border-b border-[var(--border)] transition hover:bg-white/[0.02]"
                       >
-                        {/* Incident */}
                         <td className="px-4 py-4">
                           <div className="max-w-[230px]">
                             <p className="truncate text-xs font-semibold text-slate-200">
@@ -437,7 +451,6 @@ export default function Incidents() {
                           </div>
                         </td>
 
-                        {/* Type */}
                         <td className="px-4 py-4">
                           <span className="text-xs capitalize text-slate-400">
                             {incident.type ||
@@ -446,7 +459,6 @@ export default function Incidents() {
                           </span>
                         </td>
 
-                        {/* Severity */}
                         <td className="px-4 py-4">
                           <span
                             className={`inline-flex rounded-full border px-2 py-1 text-[9px] font-semibold uppercase tracking-wide ${getSeverityStyle(
@@ -457,7 +469,6 @@ export default function Incidents() {
                           </span>
                         </td>
 
-                        {/* Location */}
                         <td className="px-4 py-4">
                           <div className="flex max-w-[220px] items-center gap-1.5">
                             <MapPin
@@ -471,7 +482,6 @@ export default function Incidents() {
                           </div>
                         </td>
 
-                        {/* Status */}
                         <td className="px-4 py-4">
                           <span
                             className={`inline-flex rounded-full border px-2 py-1 text-[9px] font-semibold uppercase tracking-wide ${getStatusStyle(
@@ -482,7 +492,6 @@ export default function Incidents() {
                           </span>
                         </td>
 
-                        {/* Created */}
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-1.5 whitespace-nowrap">
                             <Clock3
@@ -510,4 +519,4 @@ export default function Incidents() {
       )}
     </div>
   );
-}
+  }
