@@ -572,7 +572,7 @@ function Recommendation({
               : "border-orange-500/20 bg-orange-500/5"
           }`}
         >
-          <Zap
+          <Zap />
             size={12}
             className={
               isHigh
