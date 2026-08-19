@@ -1,78 +1,95 @@
 import {
   Activity,
   AlertTriangle,
+  BrainCircuit,
   Clock3,
   Package,
+  Radio,
   Siren,
   Users,
   TrendingDown,
   TrendingUp,
+  Zap,
 } from "lucide-react";
 
 interface KPI {
   title: string;
   value: string;
-  change: string;
-  trend: "up" | "down";
+  subtitle: string;
+  status: string;
+  trend: "up" | "down" | "neutral";
   icon: typeof Activity;
   iconClass: string;
   glowClass: string;
+  progress?: number;
 }
 
 const kpis: KPI[] = [
   {
-    title: "Total Incidents",
+    title: "Active Incidents",
     value: "128",
-    change: "22% vs yesterday",
+    subtitle: "Incidents being monitored",
+    status: "+22% activity",
     trend: "up",
     icon: AlertTriangle,
     iconClass: "text-red-400",
-    glowClass: "bg-red-500/10 border-red-500/20",
+    glowClass: "bg-red-500/[0.06] border-red-500/20",
+    progress: 72,
   },
   {
-    title: "Critical",
+    title: "Critical Threats",
     value: "18",
-    change: "13% vs yesterday",
+    subtitle: "Immediate intervention required",
+    status: "7 require dispatch",
     trend: "up",
     icon: Siren,
     iconClass: "text-red-400",
-    glowClass: "bg-red-500/[0.07] border-red-500/15",
+    glowClass: "bg-red-500/[0.045] border-red-500/15",
+    progress: 41,
   },
   {
-    title: "High Priority",
-    value: "34",
-    change: "8% vs yesterday",
+    title: "AI Risk Score",
+    value: "78/100",
+    subtitle: "Current national risk level",
+    status: "Elevated",
     trend: "up",
-    icon: AlertTriangle,
-    iconClass: "text-orange-400",
-    glowClass: "bg-orange-500/[0.07] border-orange-500/15",
-  },
-  {
-    title: "Responders Active",
-    value: "156",
-    change: "10% vs yesterday",
-    trend: "up",
-    icon: Users,
+    icon: BrainCircuit,
     iconClass: "text-cyan-400",
-    glowClass: "bg-cyan-500/[0.07] border-cyan-500/15",
+    glowClass: "bg-cyan-500/[0.045] border-cyan-500/15",
+    progress: 78,
   },
   {
-    title: "Resources Available",
-    value: "82",
-    change: "7% vs yesterday",
-    trend: "up",
+    title: "Responders Deployed",
+    value: "156",
+    subtitle: "Units currently operational",
+    status: "92% readiness",
+    trend: "neutral",
+    icon: Users,
+    iconClass: "text-blue-400",
+    glowClass: "bg-blue-500/[0.045] border-blue-500/15",
+    progress: 92,
+  },
+  {
+    title: "Resources Ready",
+    value: "82%",
+    subtitle: "Emergency resources available",
+    status: "Within threshold",
+    trend: "down",
     icon: Package,
     iconClass: "text-emerald-400",
-    glowClass: "bg-emerald-500/[0.07] border-emerald-500/15",
+    glowClass: "bg-emerald-500/[0.045] border-emerald-500/15",
+    progress: 82,
   },
   {
-    title: "Avg. Response Time",
+    title: "Response Efficiency",
     value: "8m 42s",
-    change: "4% vs yesterday",
+    subtitle: "Average dispatch-to-arrival",
+    status: "4% faster",
     trend: "down",
     icon: Clock3,
-    iconClass: "text-blue-400",
-    glowClass: "bg-blue-500/[0.07] border-blue-500/15",
+    iconClass: "text-violet-400",
+    glowClass: "bg-violet-500/[0.045] border-violet-500/15",
+    progress: 86,
   },
 ];
 
@@ -81,18 +98,39 @@ export default function KPICards() {
     <section className="grid grid-cols-2 gap-3 xl:grid-cols-6">
       {kpis.map((kpi) => {
         const Icon = kpi.icon;
+
         const TrendIcon =
-          kpi.trend === "up" ? TrendingUp : TrendingDown;
+          kpi.trend === "up"
+            ? TrendingUp
+            : kpi.trend === "down"
+              ? TrendingDown
+              : Activity;
+
+        const trendClass =
+          kpi.trend === "up"
+            ? "text-red-400"
+            : kpi.trend === "down"
+              ? "text-emerald-400"
+              : "text-slate-400";
 
         return (
           <div
             key={kpi.title}
-            className={`group relative overflow-hidden rounded-lg border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--border-light)] ${kpi.glowClass}`}
+            className={`group relative overflow-hidden rounded-xl border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--border-light)] ${kpi.glowClass}`}
           >
+            {/* Top row */}
             <div className="flex items-start justify-between">
-              <div>
-                <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                  {kpi.title}
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    {kpi.title}
+                  </div>
+
+                  {kpi.title === "AI Risk Score" && (
+                    <span className="rounded-full border border-cyan-500/20 bg-cyan-500/5 px-1.5 py-0.5 text-[7px] font-bold uppercase tracking-wider text-cyan-300">
+                      AI
+                    </span>
+                  )}
                 </div>
 
                 <div className="mt-2 text-xl font-bold tracking-tight text-white">
@@ -100,7 +138,7 @@ export default function KPICards() {
                 </div>
               </div>
 
-              <div className="rounded-md bg-black/20 p-2">
+              <div className="rounded-lg border border-white/[0.04] bg-black/20 p-2">
                 <Icon
                   size={16}
                   strokeWidth={1.8}
@@ -109,31 +147,70 @@ export default function KPICards() {
               </div>
             </div>
 
-            <div className="mt-3 flex items-center gap-1.5 text-[9px]">
+            {/* Description */}
+            <div className="mt-2 truncate text-[9px] text-slate-500">
+              {kpi.subtitle}
+            </div>
+
+            {/* Progress */}
+            {typeof kpi.progress === "number" && (
+              <div className="mt-3">
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="text-[8px] uppercase tracking-wider text-slate-600">
+                    Operational level
+                  </span>
+
+                  <span className="text-[8px] font-medium text-slate-500">
+                    {kpi.progress}%
+                  </span>
+                </div>
+
+                <div className="h-1 overflow-hidden rounded-full bg-white/[0.04]">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${
+                      kpi.title === "Critical Threats"
+                        ? "bg-red-400"
+                        : kpi.title === "AI Risk Score"
+                          ? "bg-cyan-400"
+                          : kpi.title === "Resources Ready"
+                            ? "bg-emerald-400"
+                            : "bg-blue-400"
+                    }`}
+                    style={{
+                      width: `${kpi.progress}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Status */}
+            <div className="mt-3 flex items-center gap-1.5">
               <TrendIcon
-                size={11}
-                className={
-                  kpi.trend === "down"
-                    ? "text-emerald-400"
-                    : "text-red-400"
-                }
+                size={10}
+                className={trendClass}
               />
 
               <span
-                className={
-                  kpi.trend === "down"
-                    ? "text-emerald-400"
-                    : "text-red-400"
-                }
+                className={`text-[9px] font-medium ${trendClass}`}
               >
-                {kpi.change}
+                {kpi.status}
               </span>
             </div>
 
-            <div className="pointer-events-none absolute -bottom-8 -right-8 h-20 w-20 rounded-full bg-white/[0.015] blur-2xl transition-all group-hover:bg-white/[0.035]" />
+            {/* Live indicator */}
+            <div className="absolute right-3 top-3">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/20" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white/30" />
+              </span>
+            </div>
+
+            {/* Background glow */}
+            <div className="pointer-events-none absolute -bottom-10 -right-10 h-24 w-24 rounded-full bg-white/[0.015] blur-2xl transition-all duration-300 group-hover:bg-white/[0.035]" />
           </div>
         );
       })}
     </section>
   );
-      }
+            }
