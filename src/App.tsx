@@ -1,5 +1,7 @@
 import { useState } from "react";
+import type { Session } from "@supabase/supabase-js";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import AuthGate from "./components/auth/AuthGate";
 import Header from "./components/layout/Header";
 import Sidebar from "./components/layout/Sidebar";
 import Dashboard from "./pages/Dashboard";
@@ -13,7 +15,7 @@ import Reports from "./pages/Reports";
 import Messages from "./pages/Messages";
 import Settings from "./pages/Settings";
 
-function AppContent() {
+function AppContent({ session }: { session: Session }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
@@ -25,6 +27,7 @@ function AppContent() {
 
       <Header
         onMenuClick={() => setMobileSidebarOpen(true)}
+        session={session}
       />
 
       <main className="min-h-screen pt-[68px] lg:pl-[248px]">
@@ -50,7 +53,9 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      <AppContent />
+      <AuthGate>
+        {(session) => <AppContent session={session} />}
+      </AuthGate>
     </Router>
   );
 }

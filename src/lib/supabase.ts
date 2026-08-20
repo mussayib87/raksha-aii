@@ -19,7 +19,13 @@ if (!supabaseConfigError) {
       throw new Error("VITE_SUPABASE_URL must use http or https.")
     }
 
-    supabase = createClient(supabaseUrl, supabasePublishableKey)
+    supabase = createClient(supabaseUrl, supabasePublishableKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
+    })
   } catch (error) {
     supabaseConfigError =
       error instanceof Error

@@ -9,6 +9,7 @@ import {
   Shield,
   X,
 } from "lucide-react";
+import type { Session } from "@supabase/supabase-js";
 import {
   useEffect,
   useRef,
@@ -17,9 +18,11 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../../lib/supabase";
 
 interface HeaderProps {
   onMenuClick: () => void;
+  session: Session;
 }
 
 interface SearchItem {
@@ -173,7 +176,7 @@ const searchIndex: SearchItem[] = [
   },
 ];
 
-export default function Header({ onMenuClick }: HeaderProps) {
+export default function Header({ onMenuClick, session }: HeaderProps) {
   const navigate = useNavigate();
 
   const searchRef = useRef<HTMLDivElement | null>(null);
@@ -570,7 +573,9 @@ export default function Header({ onMenuClick }: HeaderProps) {
           {/* Admin */}
           <button
             type="button"
+            onClick={() => void supabase?.auth.signOut()}
             className="flex items-center gap-2 rounded-md px-1.5 py-1.5 hover:bg-white/5"
+            aria-label="Sign out"
           >
             <div className="flex h-7 w-7 items-center justify-center rounded-full border border-cyan-500/30 bg-cyan-500/10 text-[10px] font-bold text-cyan-300">
               AD
@@ -578,7 +583,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
             <div className="hidden text-left sm:block">
               <div className="text-[10px] font-semibold text-slate-200">
-                Admin
+                {session.user.email?.split("@")[0] ?? "Operator"}
               </div>
 
               <div className="text-[8px] text-slate-600">
