@@ -224,7 +224,7 @@ export default function Sidebar({
             </div>
 
             <div className="mt-2 text-[10px] leading-4 text-slate-400">
-              AI monitoring and decision-support engine active.
+              Deterministic incident classification active. AI provider not configured.
             </div>
 
             <Link

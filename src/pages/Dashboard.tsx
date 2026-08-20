@@ -16,6 +16,8 @@ import KPICards from "../components/dashboard/KPICards";
 import {
   fetchIncidents,
   getIncidentMapPosition,
+  getIncidentErrorMessage,
+  subscribeToIncidentChanges,
   type Incident,
 } from "../lib/incidents";
 
@@ -33,9 +35,7 @@ export default function Dashboard() {
       .catch((error: unknown) => {
         if (mounted) {
           setMapError(
-            error instanceof Error
-              ? error.message
-              : "Unable to load incident locations."
+            getIncidentErrorMessage(error, "Unable to load incident locations.")
           );
         }
       });
@@ -44,6 +44,23 @@ export default function Dashboard() {
       mounted = false;
     };
   }, []);
+
+  useEffect(
+    () =>
+      subscribeToIncidentChanges(() => {
+        void fetchIncidents()
+          .then((data) => setIncidents(data))
+          .catch((error: unknown) => {
+            setMapError(
+              getIncidentErrorMessage(
+                error,
+                "Unable to refresh incident locations."
+              )
+            );
+          });
+      }),
+    []
+  );
 
   const locatedIncidents = incidents.filter(
     (incident) => incident.latitude !== null && incident.longitude !== null
@@ -322,16 +339,14 @@ export default function Dashboard() {
                 />
 
                 <span className="text-[9px] font-semibold uppercase tracking-[0.13em] text-slate-400">
-                  AI Assessment
+                  Provider Status
                 </span>
               </div>
 
               <p className="text-[11px] leading-5 text-slate-400">
-                Flood conditions in Zone F04 show a rising
-                escalation probability. Current responder
-                availability is sufficient, but medical
-                resources may become constrained if the
-                situation deteriorates.
+                No AI provider is configured. Incident severity remains
+                operator-selected, while priority is derived by the
+                deterministic incident classification fallback.
               </p>
             </div>
 
@@ -343,7 +358,7 @@ export default function Dashboard() {
                 </div>
 
                 <div className="mt-1 text-sm font-semibold text-orange-400">
-                  72%
+                  —
                 </div>
               </div>
 
@@ -353,7 +368,7 @@ export default function Dashboard() {
                 </div>
 
                 <div className="mt-1 text-sm font-semibold text-cyan-400">
-                  91%
+                  —
                 </div>
               </div>
             </div>
@@ -368,13 +383,12 @@ export default function Dashboard() {
 
                 <div>
                   <div className="text-[9px] font-semibold uppercase tracking-wider text-amber-300">
-                    Recommended Action
+                    Classification Mode
                   </div>
 
                   <p className="mt-1 text-[10px] leading-4 text-slate-400">
-                    Prepare additional rescue capacity
-                    near Zone F04 and stage medical
-                    resources within the next 20 minutes.
+                    Deterministic fallback active until an AI provider is
+                    configured.
                   </p>
                 </div>
               </div>
@@ -551,33 +565,21 @@ export default function Dashboard() {
               </div>
 
               <div className="mt-0.5 text-[9px] text-slate-600">
-                Suggested operational actions
+                Available when an AI provider is configured
               </div>
             </div>
 
-            <span className="rounded-full bg-cyan-500/10 px-2 py-1 text-[8px] font-bold text-cyan-300">
-              3 NEW
+              <span className="rounded-full bg-cyan-500/10 px-2 py-1 text-[8px] font-bold text-cyan-300">
+              PROVIDER OFFLINE
             </span>
           </div>
 
-          <div className="space-y-2 p-3">
-            <Recommendation
-              priority="HIGH"
-              title="Stage rescue team near Zone F04"
-              reason="Flood escalation probability increased to 72%."
-            />
-
-            <Recommendation
-              priority="MEDIUM"
-              title="Move medical resources closer"
-              reason="Projected demand may exceed current local capacity."
-            />
-
-            <Recommendation
-              priority="MEDIUM"
-              title="Monitor access route K07"
-              reason="AI detected increasing landslide-related obstruction risk."
-            />
+          <div className="p-3">
+            <div className="rounded-md border border-cyan-500/15 bg-cyan-500/[0.035] p-3 text-[10px] leading-4 text-slate-400">
+              No AI-generated recommendations are available. Incident
+              priority classification continues through the deterministic
+              fallback.
+            </div>
           </div>
 
           <div className="border-t border-[var(--border)] p-3">

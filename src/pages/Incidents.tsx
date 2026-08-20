@@ -7,9 +7,18 @@ import {
   Clock3,
   Loader2,
   XCircle,
+  Pencil,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import {
+  createIncident,
+  deleteIncident,
   fetchIncidents as loadIncidents,
+  getIncidentErrorMessage,
+  subscribeToIncidentChanges,
+  updateIncident,
+  type IncidentInput,
   type Incident,
 } from "../lib/incidents";
 
@@ -21,6 +30,21 @@ export default function Incidents() {
 
   const [search, setSearch] = useState<string>("");
   const [severity, setSeverity] = useState<string>("");
+  const [formOpen, setFormOpen] = useState<boolean>(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState<boolean>(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string>("");
+  const [form, setForm] = useState<IncidentInput>({
+    title: "",
+    description: "",
+    type: "other",
+    severity: "medium",
+    status: "open",
+    location: "",
+    latitude: null,
+    longitude: null,
+  });
 
   // --------------------------------------------------
   // Fetch incidents
@@ -38,14 +62,7 @@ export default function Incidents() {
       setIncidents(await loadIncidents());
     } catch (err: unknown) {
       console.error("Error loading incidents:", err);
-
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError(
-          "Unable to load incidents. Please check your Supabase connection."
-        );
-      }
+      setError(getIncidentErrorMessage(err));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -55,6 +72,14 @@ export default function Incidents() {
   useEffect(() => {
     void fetchIncidents();
   }, []);
+
+  useEffect(
+    () =>
+      subscribeToIncidentChanges(() => {
+        void fetchIncidents(true);
+      }),
+    []
+  );
 
   // --------------------------------------------------
   // Format date
@@ -173,6 +198,102 @@ export default function Incidents() {
     setSeverity("");
   };
 
+  const openCreateForm = (): void => {
+    setEditingId(null);
+    setFormError("");
+    setForm({
+      title: "",
+      description: "",
+      type: "other",
+      severity: "medium",
+      status: "open",
+      location: "",
+      latitude: null,
+      longitude: null,
+    });
+    setFormOpen(true);
+  };
+
+  const openEditForm = (incident: Incident): void => {
+    setEditingId(incident.id);
+    setFormError("");
+    setForm({
+      title: incident.title,
+      description: incident.description,
+      type: incident.type,
+      severity: incident.severity,
+      status: incident.status,
+      location: incident.location,
+      latitude: incident.latitude,
+      longitude: incident.longitude,
+      assigned_responder: incident.assigned_responder,
+    });
+    setFormOpen(true);
+  };
+
+  const updateForm = <K extends keyof IncidentInput>(
+    field: K,
+    value: IncidentInput[K]
+  ): void => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleFormSubmit = async (
+    event: React.FormEvent<HTMLFormElement>
+  ): Promise<void> => {
+    event.preventDefault();
+    setSaving(true);
+    setFormError("");
+
+    try {
+      if (editingId) {
+        const updated = await updateIncident(editingId, form);
+        setIncidents((current) =>
+          current.map((incident) =>
+            incident.id === updated.id ? updated : incident
+          )
+        );
+      } else {
+        const created = await createIncident(form);
+        setIncidents((current) => [created, ...current]);
+      }
+
+      setFormOpen(false);
+    } catch (err: unknown) {
+      setFormError(
+        getIncidentErrorMessage(
+          err,
+          "Unable to save the incident. Please try again."
+        )
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (incident: Incident): Promise<void> => {
+    if (!window.confirm(`Delete incident "${incident.title}"?`)) return;
+
+    setDeletingId(incident.id);
+    setError("");
+
+    try {
+      await deleteIncident(incident.id);
+      setIncidents((current) =>
+        current.filter((currentIncident) => currentIncident.id !== incident.id)
+      );
+    } catch (err: unknown) {
+      setError(
+        getIncidentErrorMessage(
+          err,
+          "Unable to delete the incident. Please try again."
+        )
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div className="space-y-4 p-4 lg:p-6">
       {/* Page heading */}
@@ -196,19 +317,29 @@ export default function Incidents() {
             </p>
           </div>
 
-          <button
-            onClick={() => void fetchIncidents(true)}
-            disabled={refreshing}
-            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-3 text-[11px] font-medium text-slate-300 transition hover:border-red-500/30 hover:bg-red-500/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {refreshing ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <RefreshCw size={14} />
-            )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={openCreateForm}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-red-500/20 bg-red-500/10 px-3 text-[11px] font-medium text-red-300 transition hover:bg-red-500/15 hover:text-white"
+            >
+              <Plus size={14} />
+              New Incident
+            </button>
 
-            {refreshing ? "Refreshing..." : "Refresh"}
-          </button>
+            <button
+              onClick={() => void fetchIncidents(true)}
+              disabled={refreshing}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-3 text-[11px] font-medium text-slate-300 transition hover:border-red-500/30 hover:bg-red-500/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {refreshing ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <RefreshCw size={14} />
+              )}
+
+              {refreshing ? "Refreshing..." : "Refresh"}
+            </button>
+          </div>
         </div>
       </section>
 
@@ -251,6 +382,150 @@ export default function Incidents() {
           </button>
         )}
       </div>
+
+      {formOpen && (
+        <form
+          onSubmit={(event) => void handleFormSubmit(event)}
+          className="rounded-lg border border-red-500/20 bg-[var(--bg-panel)] p-4"
+        >
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-white">
+              {editingId ? "Edit Incident" : "Create Incident"}
+            </h2>
+            <button
+              type="button"
+              onClick={() => setFormOpen(false)}
+              className="text-[11px] text-slate-500 transition hover:text-white"
+            >
+              Cancel
+            </button>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="text-[10px] font-medium text-slate-300">
+              Title
+              <input
+                required
+                value={form.title}
+                onChange={(event) => updateForm("title", event.target.value)}
+                className="mt-1 h-9 w-full rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-3 text-[11px] text-slate-200 focus:border-red-500/40 focus:outline-none"
+              />
+            </label>
+
+            <label className="text-[10px] font-medium text-slate-300">
+              Type
+              <input
+                required
+                value={form.type}
+                onChange={(event) => updateForm("type", event.target.value)}
+                className="mt-1 h-9 w-full rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-3 text-[11px] text-slate-200 focus:border-red-500/40 focus:outline-none"
+              />
+            </label>
+
+            <label className="text-[10px] font-medium text-slate-300">
+              Severity
+              <select
+                value={form.severity}
+                onChange={(event) =>
+                  updateForm("severity", event.target.value)
+                }
+                className="mt-1 h-9 w-full rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-3 text-[11px] text-slate-200 focus:border-red-500/40 focus:outline-none"
+              >
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </label>
+
+            <label className="text-[10px] font-medium text-slate-300">
+              Status
+              <select
+                value={form.status}
+                onChange={(event) => updateForm("status", event.target.value)}
+                className="mt-1 h-9 w-full rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-3 text-[11px] text-slate-200 focus:border-red-500/40 focus:outline-none"
+              >
+                <option value="open">Open</option>
+                <option value="assigned">Assigned</option>
+                <option value="in_progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+              </select>
+            </label>
+
+            <label className="text-[10px] font-medium text-slate-300">
+              Location
+              <input
+                value={form.location ?? ""}
+                onChange={(event) => updateForm("location", event.target.value)}
+                className="mt-1 h-9 w-full rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-3 text-[11px] text-slate-200 focus:border-red-500/40 focus:outline-none"
+              />
+            </label>
+
+            <label className="text-[10px] font-medium text-slate-300">
+              Latitude
+              <input
+                type="number"
+                min="-90"
+                max="90"
+                step="any"
+                value={form.latitude ?? ""}
+                onChange={(event) =>
+                  updateForm(
+                    "latitude",
+                    event.target.value ? Number(event.target.value) : null
+                  )
+                }
+                className="mt-1 h-9 w-full rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-3 text-[11px] text-slate-200 focus:border-red-500/40 focus:outline-none"
+              />
+            </label>
+
+            <label className="text-[10px] font-medium text-slate-300">
+              Longitude
+              <input
+                type="number"
+                min="-180"
+                max="180"
+                step="any"
+                value={form.longitude ?? ""}
+                onChange={(event) =>
+                  updateForm(
+                    "longitude",
+                    event.target.value ? Number(event.target.value) : null
+                  )
+                }
+                className="mt-1 h-9 w-full rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-3 text-[11px] text-slate-200 focus:border-red-500/40 focus:outline-none"
+              />
+            </label>
+
+            <label className="text-[10px] font-medium text-slate-300 md:col-span-2">
+              Description
+              <textarea
+                rows={3}
+                value={form.description ?? ""}
+                onChange={(event) =>
+                  updateForm("description", event.target.value)
+                }
+                className="mt-1 w-full resize-y rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2 text-[11px] text-slate-200 focus:border-red-500/40 focus:outline-none"
+              />
+            </label>
+          </div>
+
+          {formError && (
+            <p className="mt-3 text-xs text-red-400">{formError}</p>
+          )}
+
+          <div className="mt-4 flex justify-end">
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-red-600 px-4 text-[11px] font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {saving && <Loader2 size={14} className="animate-spin" />}
+              {saving ? "Saving..." : editingId ? "Save Changes" : "Create Incident"}
+            </button>
+          </div>
+        </form>
+      )}
 
       {/* Error */}
       {error && (
@@ -375,6 +650,10 @@ export default function Incidents() {
                       <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
                         Reported
                       </th>
+
+                      <th className="px-4 py-3 text-right text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
 
@@ -447,6 +726,35 @@ export default function Incidents() {
                                 incident.created_at
                               )}
                             </span>
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-4">
+                          <div className="flex justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => openEditForm(incident)}
+                              className="inline-flex h-7 items-center gap-1 rounded-md border border-[var(--border)] px-2 text-[10px] text-slate-400 transition hover:border-cyan-500/30 hover:text-cyan-300"
+                              aria-label={`Edit ${incident.title}`}
+                            >
+                              <Pencil size={12} />
+                              Edit
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => void handleDelete(incident)}
+                              disabled={deletingId === incident.id}
+                              className="inline-flex h-7 items-center gap-1 rounded-md border border-red-500/20 px-2 text-[10px] text-red-400 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+                              aria-label={`Delete ${incident.title}`}
+                            >
+                              {deletingId === incident.id ? (
+                                <Loader2 size={12} className="animate-spin" />
+                              ) : (
+                                <Trash2 size={12} />
+                              )}
+                              Delete
+                            </button>
                           </div>
                         </td>
                       </tr>

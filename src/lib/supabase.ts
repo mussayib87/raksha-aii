@@ -1,10 +1,11 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim()
+const supabasePublishableKey =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim()
 
 export let supabaseConfigError =
-  !supabaseUrl || !supabaseAnonKey
+  !supabaseUrl || !supabasePublishableKey
     ? "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in the deployment environment."
     : null
 
@@ -18,7 +19,7 @@ if (!supabaseConfigError) {
       throw new Error("VITE_SUPABASE_URL must use http or https.")
     }
 
-    supabase = createClient(supabaseUrl, supabaseAnonKey)
+    supabase = createClient(supabaseUrl, supabasePublishableKey)
   } catch (error) {
     supabaseConfigError =
       error instanceof Error

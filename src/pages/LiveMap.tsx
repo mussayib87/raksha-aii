@@ -3,7 +3,9 @@ import { useEffect, useState } from "react";
 import {
   fetchIncidents,
   getIncidentMapPosition,
+  getIncidentErrorMessage,
   isActiveIncident,
+  subscribeToIncidentChanges,
   type Incident,
 } from "../lib/incidents";
 
@@ -17,13 +19,29 @@ export default function LiveMap() {
       .then(setIncidents)
       .catch((loadError: unknown) => {
         setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "Unable to load incident locations."
+          getIncidentErrorMessage(
+            loadError,
+            "Unable to load incident locations."
+          )
         );
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(
+    () =>
+      subscribeToIncidentChanges(() => {
+        void fetchIncidents().then(setIncidents).catch((loadError: unknown) => {
+          setError(
+            getIncidentErrorMessage(
+              loadError,
+              "Unable to load incident locations."
+            )
+          );
+        });
+      }),
+    []
+  );
 
   const locatedIncidents = incidents.filter(
     (incident) => incident.latitude !== null && incident.longitude !== null

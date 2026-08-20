@@ -14,6 +14,7 @@ import {
 import { useEffect, useState } from "react";
 import {
   fetchIncidents,
+  getIncidentErrorMessage,
   isActiveIncident,
 } from "../../lib/incidents";
 
@@ -54,14 +55,13 @@ const kpis: KPI[] = [
   },
   {
     title: "AI Risk Score",
-    value: "78/100",
-    subtitle: "Current national risk level",
-    status: "Elevated",
-    trend: "up",
+    value: "—",
+    subtitle: "AI provider not configured",
+    status: "Unavailable",
+    trend: "neutral",
     icon: BrainCircuit,
     iconClass: "text-cyan-400",
     glowClass: "bg-cyan-500/[0.045] border-cyan-500/15",
-    progress: 78,
   },
   {
     title: "Responders Deployed",
@@ -121,9 +121,7 @@ export default function KPICards() {
       .catch((error: unknown) => {
         if (!mounted) return;
         setDataError(
-          error instanceof Error
-            ? error.message
-            : "Unable to load incident metrics."
+          getIncidentErrorMessage(error, "Unable to load incident metrics.")
         );
       });
 
